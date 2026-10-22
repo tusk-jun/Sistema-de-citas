@@ -48,8 +48,8 @@ function vAcceso(modo = 'entrar') {
   const btn = h('button', { class: 'btn', type: 'submit', text: esReg ? 'Crear cuenta' : esRec ? 'Enviar instrucciones' : 'Entrar' });
   const f = h('form', { class: 'panel auth', novalidate: true, onsubmit: async (ev) => {
     ev.preventDefault(); err.textContent = '';
-    if (!email.value.includes('@') || (!esRec && pass.value.length < 8) || (esReg && nom.value.trim().length < 2)) {
-      err.textContent = 'Revisa el correo, el nombre y una contraseña de mínimo 8 caracteres.'; return; }
+    if (!email.value.includes('@') || (esReg && pass.value.length < 8) || (!esReg && !esRec && !pass.value) || (esReg && nom.value.trim().length < 2)) {
+      err.textContent = 'Revisa el correo y la contraseña (al crear cuenta, mínimo 8 caracteres).'; return; }
     await conBoton(btn, async () => {
       if (esReg) { await Auth.registrar(email.value.trim(), pass.value, nom.value.trim()); toast('Cuenta creada. Si se pide, confirma tu correo y entra.', 'ok'); vAcceso('entrar'); }
       else if (esRec) { await Auth.recuperar(email.value.trim()); toast('Si el correo existe, recibirás instrucciones.', 'ok'); }
