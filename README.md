@@ -1,6 +1,6 @@
 # Ceiba · Sistema web de reserva de citas médicas (MVP)
 Proyecto integrador de Análisis y Diseño de Software. Clínica **ficticia**; no usar datos reales.
-Integrantes: Joicer Prieto - Anthony Larios · Publicación: _(URL de GitHub Pages)_
+Integrantes: Joicer Prieto - Anthony Larios · Publicación: _(URL https://tusk-jun.github.io/Sistema-de-citas/)_
 
 ## Qué hace
 - **Paciente:** registro/login, perfil, búsqueda de franjas por especialidad/profesional/fecha, reserva, "Mis citas", cancelación (mín. 12 h de anticipación).
