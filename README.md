@@ -1,18 +1,11 @@
 # Ceiba · Sistema web de reserva de citas médicas (MVP)
 Proyecto integrador de Análisis y Diseño de Software. Clínica **ficticia**; no usar datos reales.
-Integrantes: _(completar)_ · Publicación: _(URL de GitHub Pages)_
+Integrantes: Joicer Prieto - Anthony Larios · Publicación: _(URL de GitHub Pages)_
 
 ## Qué hace
 - **Paciente:** registro/login, perfil, búsqueda de franjas por especialidad/profesional/fecha, reserva, "Mis citas", cancelación (mín. 12 h de anticipación).
 - **Profesional:** agenda propia y cambio de estado (programada → confirmada → atendida / no asistió / cancelada).
 - **Administrador:** especialidades, asignación de profesionales, generación y bloqueo de horarios, citas e indicadores.
-
-## Instalación
-1. Cree un proyecto en Supabase. En SQL Editor ejecute, en orden: `sql/esquema.sql`, `sql/politicas_rls.sql`.
-2. En Authentication > Users cree (Auto Confirm) `admin.demo@example.com`, `medico1.demo@example.com`, `medico2.demo@example.com`, `paciente.demo@example.com`; luego ejecute `sql/datos_prueba.sql`.
-3. Edite `assets/js/config.js` con la **URL** y la clave **anon** (Project Settings > API). Nunca la `service_role`.
-4. Publique en GitHub Pages (Settings > Pages > rama `main`, carpeta raíz).
-5. Credenciales de demostración: los correos anteriores con la contraseña que usted definió al crearlos (documéntela aquí solo si es exclusivamente de demostración).
 
 ## Decisiones técnicas
 - **Doble reserva:** `reservar_cita()` cambia la franja con un `UPDATE ... WHERE estado='disponible'` atómico + índice único parcial `uq_cita_activa_por_franja`.
