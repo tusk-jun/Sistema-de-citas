@@ -2,14 +2,15 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
-export const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Sesion por pestana (sessionStorage): cada pestana puede tener un usuario distinto y cerrar sesion en una no afecta a la otra.
+export const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage: window.sessionStorage } });
 const ok = async (p) => { const { data, error } = await p; if (error) throw error; return data; };
 
 export const Auth = {
   entrar: (email, password) => ok(sb.auth.signInWithPassword({ email, password })),
   registrar: (email, password, nombres) => ok(sb.auth.signUp({ email, password, options: { data: { nombres } } })),
   recuperar: (email) => ok(sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname })),
-  salir: () => sb.auth.signOut(),
+  salir: () => sb.auth.signOut({ scope: 'local' }),
   sesion: async () => (await sb.auth.getSession()).data.session,
   onCambio: (fn) => sb.auth.onAuthStateChange((ev) => fn(ev)),
 };
