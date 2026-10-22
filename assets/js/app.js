@@ -15,7 +15,8 @@ const RUTAS = {
 
 async function iniciar() {
   salir.onclick = async () => { await Auth.salir(); };
-  Auth.onCambio(() => arrancar());
+  // No devolver promesas ni llamar a Supabase dentro del callback (provoca bloqueo): se difiere.
+  Auth.onCambio((ev) => { if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') setTimeout(arrancar, 0); });
   window.addEventListener('hashchange', pintar);
   await arrancar();
 }
