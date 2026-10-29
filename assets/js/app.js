@@ -62,7 +62,7 @@ function vAcceso(modo = 'entrar') {
     err, btn,
     h('p', {}, h('button', { type: 'button', class: 'link', text: esReg ? 'Ya tengo cuenta' : 'Crear cuenta', onclick: () => vAcceso(esReg ? 'entrar' : 'registro') }), ' · ',
       h('button', { type: 'button', class: 'link', text: esRec ? 'Volver' : 'Olvidé mi contraseña', onclick: () => vAcceso(esRec ? 'entrar' : 'recuperar') })));
-  main.append(h('h1', { text: 'Reserva tu cita médica en minutos' }), h('p', { text: 'Consultorios Ceiba es una clínica ficticia para el proyecto integrador. No ingreses datos reales.' }), f);
+  main.append(h('h1', { text: 'Reserva tu cita médica en minutos' }), h('p', { text: 'Consultorios Ceiba.' }), f);
 }
 
 /* ---------- Paciente ---------- */
