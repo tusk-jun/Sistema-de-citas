@@ -16,9 +16,12 @@
 <header class="bar">
   <span class="brand">Ceiba</span>
   <nav id="nav" aria-label="Principal"></nav>
-  <button id="salir" class="btn ghost" hidden>Cerrar sesión</button>
+  <div class="ajustes"><label for="tema">Tema <select id="tema"><option value="">Claro</option><option value="oscuro">Oscuro</option><option value="contraste">Alto contraste</option></select></label>
+    <button id="txt" class="btn ghost sm" aria-pressed="false" aria-label="Texto grande">A+</button></div>
+  <button id="salir" class="btn ghost sm" hidden>Cerrar sesión</button>
 </header>
 <main id="main" tabindex="-1"></main>
+<footer><a href="#privacidad">Política de tratamiento de datos</a> · Clínica ficticia con fines académicos: no ingreses datos reales.</footer>
 <div id="toasts" role="status" aria-live="polite"></div>
 <dialog id="dlg"></dialog>
 <script type="module" src="assets/js/app.js"></script>
