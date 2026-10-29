@@ -5,6 +5,7 @@ const main = document.getElementById('main');
 const nav = document.getElementById('nav');
 const salir = document.getElementById('salir');
 let perfil = null;
+const VERSION_POLITICA = '2026-10';
 
 const RUTAS = {
   paciente: [['reservar', 'Reservar cita', vReservar], ['mis-citas', 'Mis citas', vMisCitas], ['perfil', 'Perfil', vPerfil]],
@@ -13,7 +14,18 @@ const RUTAS = {
     ['profesionales', 'Profesionales', vProfesionales], ['horarios', 'Horarios', vHorarios], ['citas', 'Citas', vCitasAdmin], ['perfil', 'Perfil', vPerfil]],
 };
 
+function ajustes() {
+  const raiz = document.documentElement, sel = document.getElementById('tema'), txt = document.getElementById('txt');
+  const leer = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
+  const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } };
+  const tema = leer('tema'), grande = leer('texto') === 'grande';
+  if (tema) raiz.dataset.tema = tema; sel.value = tema;
+  if (grande) { raiz.dataset.texto = 'grande'; txt.setAttribute('aria-pressed', 'true'); }
+  sel.onchange = () => { if (sel.value) raiz.dataset.tema = sel.value; else delete raiz.dataset.tema; guardar('tema', sel.value); };
+  txt.onclick = () => { const on = txt.getAttribute('aria-pressed') !== 'true'; txt.setAttribute('aria-pressed', on); if (on) raiz.dataset.texto = 'grande'; else delete raiz.dataset.texto; guardar('texto', on ? 'grande' : ''); };
+}
 async function iniciar() {
+  ajustes();
   salir.onclick = async () => { await Auth.salir(); };
   // No devolver promesas ni llamar a Supabase dentro del callback (provoca bloqueo): se difiere.
   Auth.onCambio((ev) => { if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') setTimeout(arrancar, 0); });
@@ -23,13 +35,16 @@ async function iniciar() {
 async function arrancar() {
   try {
     perfil = (await Auth.sesion()) ? await Perfil.mio() : null;
+    if (perfil) perfil.consentido = await Perfil.consentimiento(VERSION_POLITICA);
     if (perfil && !perfil.activo) { await Auth.salir(); perfil = null; toast('Tu cuenta está desactivada. Contacta a recepción.', 'bad'); }
   } catch (e) { perfil = null; toast(msgError(e), 'bad'); }
   salir.hidden = !perfil; pintar();
 }
 function pintar() {
   limpiar(nav); limpiar(main);
+  if (location.hash === '#privacidad') return vPrivacidad();
   if (!perfil) return vAcceso();
+  if (!perfil.consentido) return vConsentimiento();
   const rutas = RUTAS[perfil.rol] || [];               // rol desconocido = sin acceso (deny by default)
   const actual = location.hash.slice(1);
   const ruta = rutas.find((r) => r[0] === actual) || rutas[0];
@@ -46,23 +61,27 @@ function vAcceso(modo = 'entrar') {
   const email = h('input', { type: 'email', required: true, autocomplete: 'email' });
   const pass = h('input', { type: 'password', required: true, minlength: 8, autocomplete: esReg ? 'new-password' : 'current-password' });
   const nom = h('input', { type: 'text', required: true, minlength: 2, maxlength: 80, autocomplete: 'name' });
+  const ok = h('input', { type: 'checkbox', id: 'f-ok' });
   const btn = h('button', { class: 'btn', type: 'submit', text: esReg ? 'Crear cuenta' : esRec ? 'Enviar instrucciones' : 'Entrar' });
   const f = h('form', { class: 'panel auth', novalidate: true, onsubmit: async (ev) => {
     ev.preventDefault(); err.textContent = '';
-    if (!email.value.includes('@') || (esReg && pass.value.length < 8) || (!esReg && !esRec && !pass.value) || (esReg && nom.value.trim().length < 2)) {
-      err.textContent = 'Revisa el correo y la contraseña (al crear cuenta, mínimo 8 caracteres).'; return; }
+    if (!email.value.includes('@') || (esReg && pass.value.length < 8) || (!esReg && !esRec && !pass.value) || (esReg && nom.value.trim().length < 2) || (esReg && !ok.checked)) {
+      err.textContent = `Revisa el correo y la contraseña (mínimo 8 caracteres al crear cuenta)${esReg ? ' y acepta el tratamiento de datos' : ''}.`; return; }
     await conBoton(btn, async () => {
-      if (esReg) { await Auth.registrar(email.value.trim(), pass.value, nom.value.trim()); toast('Cuenta creada. Si se pide, confirma tu correo y entra.', 'ok'); vAcceso('entrar'); }
+      if (esReg) { await Auth.registrar(email.value.trim(), pass.value, nom.value.trim(), VERSION_POLITICA); toast('Cuenta creada. Si se pide, confirma tu correo y entra.', 'ok'); vAcceso('entrar'); }
       else if (esRec) { await Auth.recuperar(email.value.trim()); toast('Si el correo existe, recibirás instrucciones.', 'ok'); }
       else await Auth.entrar(email.value.trim(), pass.value);
     });
   } },
     h('h2', { text: esReg ? 'Crear cuenta de paciente' : esRec ? 'Recuperar contraseña' : 'Iniciar sesión' }),
     esReg ? campo('Nombre completo', nom, 'f-nom') : '', campo('Correo', email, 'f-mail'), esRec ? '' : campo('Contraseña', pass, 'f-pass'),
+    esRec ? '' : h('button', { type: 'button', class: 'link', text: 'Mostrar u ocultar contraseña', onclick: () => { pass.type = pass.type === 'password' ? 'text' : 'password'; } }),
+    esReg ? h('label', { class: 'chk', for: 'f-ok' }, ok, h('span', {}, 'Autorizo el tratamiento de mis datos personales según la ', h('a', { href: '#privacidad', text: 'política de tratamiento de datos' }), '.')) : '',
     err, btn,
     h('p', {}, h('button', { type: 'button', class: 'link', text: esReg ? 'Ya tengo cuenta' : 'Crear cuenta', onclick: () => vAcceso(esReg ? 'entrar' : 'registro') }), ' · ',
       h('button', { type: 'button', class: 'link', text: esRec ? 'Volver' : 'Olvidé mi contraseña', onclick: () => vAcceso(esRec ? 'entrar' : 'recuperar') })));
-  main.append(h('h1', { text: 'Reserva tu cita médica en minutos' }), h('p', { text: 'Consultorios Ceiba.' }), f);
+  main.append(h('h1', { text: 'Reserva tu cita médica en minutos' }), h('p', { text: 'Agenda, consulta y cancela tus citas desde cualquier dispositivo.' }),
+    h('ul', { class: 'conf' }, ['Solo pedimos lo necesario', 'Sin datos clínicos', 'Tú decides sobre tus datos'].map((t) => h('li', { text: t }))), f);
 }
 
 /* ---------- Paciente ---------- */
@@ -121,7 +140,37 @@ function vPerfil() {
     await conBoton(btn, async () => { await Perfil.guardar(perfil.id, { nombres: nom.value.trim(), documento: doc.value.trim() || null, telefono: tel.value.trim() || null, fecha_nacimiento: nac.value || null });
       perfil = await Perfil.mio(); toast('Perfil guardado.', 'ok'); }); } },
     campo('Nombre completo', nom, 'p-nom'), campo('Documento', doc, 'p-doc'), campo('Teléfono', tel, 'p-tel'), campo('Fecha de nacimiento', nac, 'p-nac'), btn),
-    h('p', { class: 'empty', text: 'Solo pedimos datos de contacto. No registres información clínica.' }));
+    h('p', { class: 'empty', text: 'Solo pedimos datos de contacto. No registres información clínica.' }), derechos());
+}
+
+function derechos() {
+  const bajar = h('button', { class: 'btn ghost', type: 'button', text: 'Descargar mis datos', onclick: (ev) => conBoton(ev.target, async () => {
+    const blob = new Blob([JSON.stringify(await Perfil.exportar(), null, 2)], { type: 'application/json' });
+    const a = h('a', { href: URL.createObjectURL(blob), download: 'mis-datos-ceiba.json' }); a.click(); URL.revokeObjectURL(a.href); }) });
+  const borrar = h('button', { class: 'btn bad', type: 'button', text: 'Eliminar mis datos personales', onclick: async (ev) => {
+    if (await confirmar('¿Eliminar tus datos?', 'Cancelaremos tus citas futuras y borraremos tu nombre, documento, teléfono y fecha de nacimiento. Tu cuenta quedará cerrada y no se puede deshacer.'))
+      await conBoton(ev.target, async () => { await Perfil.anonimizar(); toast('Tus datos fueron eliminados.', 'ok'); await Auth.salir(); }); } });
+  return h('section', { class: 'panel' }, h('h2', { text: 'Tus datos y tus derechos' }),
+    h('p', { text: 'Puedes conocer, actualizar, rectificar y suprimir tus datos, o revocar tu autorización. Más detalle en la ' }, h('a', { href: '#privacidad', text: 'política de tratamiento de datos' }), '.'),
+    h('div', { class: 'row' }, bajar, perfil.rol === 'paciente' ? borrar : ''));
+}
+function vConsentimiento() {
+  main.append(h('h1', { text: 'Antes de continuar' }), h('section', { class: 'panel auth' },
+    h('p', { text: 'Para agendar citas necesitamos tu autorización para tratar tus datos personales (nombre, documento, teléfono y fecha de nacimiento) con ese único fin.' }),
+    h('p', {}, h('a', { href: '#privacidad', text: 'Leer la política de tratamiento de datos' })),
+    h('div', { class: 'row' }, h('button', { class: 'btn', text: 'Acepto', onclick: (ev) => conBoton(ev.target, async () => { await Perfil.aceptar(VERSION_POLITICA); perfil.consentido = true; pintar(); }) }),
+      h('button', { class: 'btn ghost', text: 'No acepto y salir', onclick: () => Auth.salir() }))));
+}
+function vPrivacidad() {
+  const li = (...t) => h('ul', {}, t.map((x) => h('li', { text: x })));
+  main.append(h('p', {}, h('a', { href: '#', text: '← Volver' })), h('h1', { text: 'Política de tratamiento de datos' }), h('article', { class: 'panel politica' },
+    h('p', { text: 'Versión ' + VERSION_POLITICA + '. Plantilla académica basada en la Ley 1581 de 2012 (Colombia). Consultorios Ceiba es una clínica ficticia.' }),
+    h('h2', { text: 'Qué datos recogemos' }), li('Nombre, documento, teléfono y fecha de nacimiento.', 'Correo electrónico para tu cuenta.', 'Motivo breve de la cita (opcional). No debes escribir información clínica.'),
+    h('h2', { text: 'Para qué los usamos' }), li('Crear tu cuenta, reservar, confirmar y cancelar citas.', 'Contactarte sobre tus citas.', 'Estadísticas internas sin identificarte.'),
+    h('h2', { text: 'Quién los ve' }), li('Tú ves todos tus datos.', 'El profesional asignado ve tu nombre, el motivo y un documento parcial.', 'Recepción y administración gestionan las citas.', 'No vendemos ni compartimos tus datos con terceros.'),
+    h('h2', { text: 'Tus derechos' }), li('Conocer, actualizar y rectificar tus datos (en Perfil).', 'Descargar una copia (Perfil > Descargar mis datos).', 'Suprimir tus datos y revocar la autorización (Perfil > Eliminar mis datos personales).', 'Presentar quejas ante la Superintendencia de Industria y Comercio.'),
+    h('h2', { text: 'Conservación y seguridad' }), li('Guardamos tus datos mientras tengas cuenta; al eliminarlos se anonimizan.', 'Acceso protegido por inicio de sesión y reglas de seguridad en la base de datos.'),
+    h('h2', { text: 'Contacto' }), h('p', { text: 'Responsable: Consultorios Ceiba (ficticio) · privacidad@ejemplo.test' })));
 }
 
 /* ---------- Profesional ---------- */

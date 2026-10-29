@@ -8,7 +8,7 @@ const ok = async (p) => { const { data, error } = await p; if (error) throw erro
 
 export const Auth = {
   entrar: (email, password) => ok(sb.auth.signInWithPassword({ email, password })),
-  registrar: (email, password, nombres) => ok(sb.auth.signUp({ email, password, options: { data: { nombres } } })),
+  registrar: (email, password, nombres, version) => ok(sb.auth.signUp({ email, password, options: { data: { nombres, acepta_datos: 'true', version_politica: version } } })),
   recuperar: (email) => ok(sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname })),
   salir: () => sb.auth.signOut({ scope: 'local' }),
   sesion: async () => (await sb.auth.getSession()).data.session,
@@ -18,6 +18,10 @@ export const Perfil = {
   // El rol se lee SIEMPRE de la base (no de metadatos del token).
   mio: async () => { const u = (await sb.auth.getUser()).data.user; if (!u) return null;
     return ok(sb.from('profiles').select('id,nombres,documento,telefono,fecha_nacimiento,rol,activo').eq('id', u.id).single()); },
+  consentimiento: async (version) => { const r = await ok(sb.from('consentimientos').select('version').order('accepted_at', { ascending: false }).limit(1)); return r[0]?.version === version; },
+  aceptar: (version) => ok(sb.rpc('aceptar_politica', { p_version: version })),
+  exportar: () => ok(sb.rpc('exportar_mis_datos')),
+  anonimizar: () => ok(sb.rpc('anonimizar_mi_cuenta')),
   guardar: (id, v) => ok(sb.from('profiles').update({ nombres: v.nombres, documento: v.documento, telefono: v.telefono, fecha_nacimiento: v.fecha_nacimiento }).eq('id', id)),
 };
 export const Citas = {
